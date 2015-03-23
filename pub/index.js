@@ -1,5 +1,5 @@
 function main() {
-	player.camera = new Camera(2000, Math.PI / 2);
+	player.camera = new Camera(2000, Math.PI / 2, 0);
 	event_handlers();
 	setCanvasDim();
 
@@ -27,12 +27,13 @@ var player = {
 	straight: 0,
 	across: 0,
 	camera: {},
-	speed: 10,
+	speed: 20,
 	rotate: 0,
 	mouse: {
 		x: canvas.width / 2,
 		y: canvas.height / 2
-	}
+	},
+	rotate2: 0
 }
 
 var ctx;
@@ -40,25 +41,30 @@ var ctx;
 var board = {
 	minX: -20000,
 	minY: -20000,
-	minZ: -1000,
+	minZ: -10000,
 
 	maxX: 20000,
 	maxY: 20000,
-	maxZ: 1000,
+	maxZ: 10000,
 }
 
-var Camera = function(distance, alpha) {
+var Camera = function(distance, alpha, beta) {
 	this.width = canvas.width;
 	this.height = canvas.height;
 	this.distance = distance;
-	this.alpha = alpha;
+	this.alpha = alpha || 0;
+	this.beta = beta || 0;
 	this.fishEye = true;
 }
 Camera.prototype.rotate = function(rotation) {
 	var x = Math.floor((this.alpha + rotation / 100) / 2 / Math.PI)
 	this.alpha = (this.alpha + rotation / 100) - x * 2 * Math.PI;
 }
-
+Camera.prototype.rotate2 = function(rotation) {
+	this.beta = (this.beta + rotation / 100);
+	if(this.beta > Math.PI/2) this.beta = Math.PI/2;
+	if(this.beta < -Math.PI/2) this.beta = -Math.PI/2;
+}
 function loop() {
 	
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -292,14 +298,15 @@ function draw_objs() {
 			}
 
 
-			/*
+			
 			b = -c.beta  + Math.acos(dist / v1.size) * Math.sign(v1.z);
 			if(b > Math.PI) b -= 2*Math.PI;
 			if(b < -Math.PI) b += 2*Math.PI;
 			v1.screenY = c.distance * b + c.height / 2;
-			*/
-
+			
+			/*
 			v1.screenY = v1.z / dist * c.distance + c.height / 2;
+			*/
 
 			v1.origY = o.vertex[i].y;
 		}
@@ -376,14 +383,15 @@ function move_player() {
 	var Vy = Math.sin(player.camera.alpha)
 	player.x += player.speed * (player.straight * Vx + player.across * Vy)
 	player.y += player.speed * (player.straight * Vy - player.across * Vx);
-	player.camera.rotate(player.rotate);
+	player.z += player.speed * (player.straight * Math.sin(player.camera.beta));
+	//player.camera.rotate(player.rotate);
 
 	if (player.mouse.x < canvas.width / 2 - 100 || player.mouse.x > canvas.width / 2 + 100) {
 		player.camera.rotate((canvas.width / 2 - player.mouse.x) / 300);
 	}
 
 	if (player.mouse.y < canvas.height / 2 - 100 || player.mouse.y > canvas.height / 2 + 100) {
-		player.z -= (canvas.height / 2 - player.mouse.y) / 30;
+		player.camera.rotate2(-(canvas.height / 2 - player.mouse.y) / 300);
 	}
 
 	if(player.z > board.maxZ) player.z = board.maxZ;
