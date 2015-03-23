@@ -1,0 +1,29 @@
+{
+  "name": "3d-world",
+  "version": "0.0.1",
+  "description": "3D World",
+  "main": "server.js",
+  "engines": {
+    "node": "0.10.x"
+  },
+  "dependencies": {
+    "body-parser": "~1.11.x",
+    "express": "~4.9.x",
+    "jade": "~1.9.x",
+    "method-override": "*",
+    "http": "*"
+  },
+  "keywords": [
+    "3d",
+    "game",
+    "js",
+    "html5",
+    "Maciej Bukowski"
+  ],
+  "license": "Copyright",
+  "private": "true",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "Maciej Bukowski"
+}
