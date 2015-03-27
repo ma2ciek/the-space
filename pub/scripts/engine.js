@@ -1,11 +1,12 @@
+"use strict";
+
 function main() {
 	player.camera = new Camera(2000, 0, 0);
 	event_handlers();
 	setCanvasDim();
 
-	ctx = $('canvas')[0].getContext('2d');
+	ctx = $('#game')[0].getContext('2d');
 
-	create_objs();
 	loop();
 }
 
@@ -13,10 +14,12 @@ var canvas = {
 	width: window.innerWidth,
 	height: window.innerHeight,
 	adjust: function() {
-		canvas.width = window.innerWidth;
+		canvas.width = window.innerWidth - editor.opened * editor.width;
 		canvas.height = window.innerHeight;
-		$('canvas').width(canvas.width);
-		$('canvas').height(canvas.height)
+		$('#game').attr('width', canvas.width + 'px');
+		$('#game').attr('height', canvas.height + 'px');
+		player.mouse.x = canvas.width / 2;
+		player.mouse.y = canvas.height / 2;
 	}
 }
 
@@ -55,6 +58,7 @@ var Camera = function(distance, alpha, beta) {
 	this.distance = distance;
 	this.alpha = alpha || 0;
 	this.beta = beta || 0;
+	this.speed = 2;
 }
 Camera.prototype.rotate = function(rotation) {
 	var x = Math.floor((this.alpha + rotation / 100) / 2 / Math.PI)
@@ -78,13 +82,13 @@ function loop() {
 }
 
 function setCanvasDim() {
-	$('canvas')[0].width = canvas.width;
-	$('canvas')[0].height = canvas.height;
+	$('#game').attr('width', canvas.width + 'px');
+	$('#game').attr('height', canvas.height + 'px');
 
 }
 
-function Shape(type, x, y, z, size) {
-	var proto, sides;
+function Shape(type, x, y, z, size, opacity) {
+	var proto, max_vis_sides;
 	if (typeof size == 'number') {
 		var s = size;
 		size = [s, s, s];
@@ -93,91 +97,100 @@ function Shape(type, x, y, z, size) {
 	switch (type) {
 		case 'cube':
 			proto = cube_proto;
-			sides = 3;
+			max_vis_sides = 6;
 			break;
 		case 'diamond':
 			proto = diamond_proto;
-			sides = 5;
+			max_vis_sides = 6;
+			break;
+		case 'dach':
+			proto = dach_proto;
+			max_vis_sides = 5;
+			break;
+		case 'podstawa':
+			proto = podstawa_proto;
+			max_vis_sides = 5;
+			break;
+		case 'komin':
+			proto = komin_proto;
+			max_vis_sides = 5;
 			break;
 		default:
-			console.error('Brak takiej figury');
+			console.error('Brak figury: ' + type);
 			break;
+	};
+
+	this.vertices = []
+
+	for (var i = 0; i < proto.vertices.length; i++) {
+		this.vertices.push({
+			x: proto.vertices[i][0],
+			y: proto.vertices[i][1],
+			z: proto.vertices[i][2],
+		})
 	}
-	this.vertex = [];
-	for (var i = 0; i < proto.vertex.length; i++) {
-		this.vertex.push({
-			x: proto.vertex[i][0] * size[0] / 2 + x,
-			y: proto.vertex[i][1] * size[1] / 2 + y,
-			z: proto.vertex[i][2] * size[2] / 2 + z
-		});
+	this.sides = [];
+	if (opacity == undefined || opacity == null) opacity = 0.5;
+	for (var i = 0; i < proto.sides.length; i++) {
+		if (typeof proto.sides[i][0] == 'string') {
+			this.sides.push({
+				color: proto.sides[i][0],
+				vert: proto.sides[i].slice(1)
+			});
+		} else {
+			this.sides.push({
+				color: 'rgba(' + los(255) + ',' + los(255) + ',' + los(255) + ',' + opacity +')',
+				vert: proto.sides[i].slice(0)
+			});
+		}
 	}
-	this.connections = proto.connections;
-	this.sites = proto.sites;
 	this.pos = {
 		x: x,
 		y: y,
 		z: z
+	};
+	this.size = {
+		x: size[0],
+		y: size[1],
+		z: size[2]
 	}
-	this.max_vis_sides = sides;
+	this.max_vis_sides = max_vis_sides;
 	this.rotateZ = 0;
 	this.rotateX = 0;
 	this.rotateY = 0;
 }
 
 Shape.prototype.rotate = function() {
-	if (this.rotateX) {
-		for (var i = 0; i < this.vertex.length; i++) {
-			var v = this.vertex[i];
-			var z = v.z - this.pos.z;
-			var y = v.y - this.pos.y;
-			v.z = z * Math.cos(this.rotateX) - y * Math.sin(this.rotateX) + this.pos.z;
-			v.y = z * Math.sin(this.rotateX) + y * Math.cos(this.rotateX) + this.pos.y;
-		}
+	for (var i = 0; i < this.vertices.length; i++) {
+		var v = this.vertices[i];
+		var z = v.z;
+		var y = v.y;
+		v.z = z * Math.cos(this.rotateX) - y * Math.sin(this.rotateX);
+		v.y = z * Math.sin(this.rotateX) + y * Math.cos(this.rotateX);
+
+		var z = v.z;
+		var x = v.x;
+
+		v.x = z * Math.sin(this.rotateY) + x * Math.cos(this.rotateY);
+		v.z = z * Math.cos(this.rotateY) - x * Math.sin(this.rotateY);
+
+		var x = v.x;
+		var y = v.y;
+		v.x = x * Math.cos(this.rotateZ) - y * Math.sin(this.rotateZ);
+		v.y = x * Math.sin(this.rotateZ) + y * Math.cos(this.rotateZ);
 	}
-	if (this.rotateY) {
-		for (var i = 0; i < this.vertex.length; i++) {
-			var v = this.vertex[i];
-			var z = v.z - this.pos.z;
-			var x = v.x - this.pos.x;
-			v.x = z * Math.sin(this.rotateY) + x * Math.cos(this.rotateY) + this.pos.x;
-			v.z = z * Math.cos(this.rotateY) - x * Math.sin(this.rotateY) + this.pos.z;
-			
-		}
-	}
-	if (this.rotateZ) {
-		for (var i = 0; i < this.vertex.length; i++) {
-			var v = this.vertex[i];
-			var x = v.x - this.pos.x;
-			var y = v.y - this.pos.y;
-			v.x = x * Math.cos(this.rotateZ) - y * Math.sin(this.rotateZ) + this.pos.x;
-			v.y = x * Math.sin(this.rotateZ) + y * Math.cos(this.rotateZ) + this.pos.y;
-		}
-	}
-	
 }
 
 var ob = [];
 
-function create_objs() {
-	ob.push(new Shape('diamond', -1000, 2500, 0, [200, 200, 500]));
-
-	for (var i = 0; i < 10; i++) {
-		for (var j = 0; j < 10; j++) {
-			for (var k = 0; k < 2; k++) {
-				ob.push(new Shape('cube', i * 500, j * 500, k * 500, 200));
-			}
-		}
-	}
-	ob[0].rotateZ = 0.01;
-	ob[1].rotateX = 0.01;
-	ob[1].rotateZ = 0.01;
-	ob[2].rotateY = 0.025;
+ob.last = function() { 
+	return ob[ob.length - 1];
 }
 
 function draw_objs() {
 	var c = player.camera;
 	var colors = [
-		'red',
+		'#09f',
 		'blue',
 		'purple',
 		'green',
@@ -190,86 +203,99 @@ function draw_objs() {
 
 	//###################### SORTOWANIE OBIEKTÓW ############################
 
+	var ob_array = [];
 	for (var i = 0; i < ob.length; i++) {
 		var o = ob[i].pos;
-		ob[i].dist_sq = Math.sq_sum(o.x - player.x, o.y - player.y, o.z - player.z);
+		ob_array.push({
+			key: i
+		});
+		ob_array[i].dist_sq = Math.sq_sum(o.x - player.x, o.y - player.y, o.z - player.z);
 	}
-	ob.sort(function(a, b) {
+	ob_array.sort(function(a, b) {
 		return b.dist_sq - a.dist_sq;
 	})
 
 
 
 	for (var j = 0; j < ob.length; j++) {
-		ob[j].rotate();
+
+		var o = ob[ob_array[j].key];
+
+		o.rotate();
 		var vectors = [];
-		var o = ob[j];
-		o.hidden = false;
+
 		/* Pomocnicze */
 		var max_dist = 0;
-		var disp = 0;
-		for (var i = 0; i < o.vertex.length; i++) {
-			vectors.push(new Vector3D(o.vertex[i], player));
-			var v1 = vectors[i];
+		for (var i = 0; i < o.vertices.length; i++) {
+			var realVertex = {
+				x: o.vertices[i].x * o.size.x / 2 + o.pos.x,
+				y: o.vertices[i].y * o.size.y / 2 + o.pos.y,
+				z: o.vertices[i].z * o.size.z / 2 + o.pos.z
+			}
+			vectors.push(new Vector3D(realVertex, player));
+			var v1 = vectors[i]; // vectors to vertices
 
 			var c = player.camera;
-			
+
 			var v2 = {};
 			v2.x = v1.y * Math.cos(-c.alpha) - v1.x * Math.sin(-c.alpha);
 			v2.y = v1.y * Math.sin(-c.alpha) + v1.x * Math.cos(-c.alpha);
 			v2.z = v1.z
 
-			var v3 = {};	
+			var v3 = {};
 			v3.x = v2.x;
 			v3.y = v2.z * Math.sin(c.beta) + v2.y * Math.cos(c.beta);
-			v3.z = v2.z * Math.cos(c.beta) - v2.y * Math.sin(c.beta);
+			v3.z = -v2.z * Math.cos(c.beta) + v2.y * Math.sin(c.beta);
 
 			v1.screenX = v3.x * c.distance / (v3.y) + c.width / 2;
 			v1.screenY = v3.z * c.distance / (v3.y) + c.height / 2;
+			o.vertices[i].screenX = v1.screenX;
+			o.vertices[i].screenY = v1.screenY;
 
-			if(v3.y < 0) o.hidden= true;
+			if (v3.y < 0) v1.hidden = true;
 
 
 			if (v1.screenX > 0 && v1.screenX < canvas.width && v1.screenY > 0 && v1.screenY < canvas.height) {
-				disp == 1;
+				o.disp = 1;
 			}
 		}
 		window.vectors = vectors;
 
-		if (o.hidden || disp) continue;
+		if (!o.disp) continue;
 
 
 		//################### SORTOWANIE ŚCIAN ##########################
 
-		var sites_arr = [];
-		for (var i = 0; i < o.sites.length; i++) {
-			var site = o.sites[i];
+		var sides_arr = [];
+		for (var i = 0; i < o.sides.length; i++) {
+			var side = o.sides[i];
 			var sum = 0;
-			for (var k = 0; k < site.length; k++) {
-				sum += vectors[site[k]].size;
+			for (var k = 0; k < side.vert.length; k++) {
+				sum += vectors[side.vert[k]].size;
 			}
-			sites_arr.push({
+			sum /= side.vert.length;
+			sides_arr.push({
 				key: i,
 				dist: sum
 			});
 		}
 
-		sites_arr.sort(function(a, b) {
+		sides_arr.sort(function(a, b) {
 			return b.dist - a.dist;
 		})
 
 		// 50% SPEED BOOST :D
-		var disp_sides_len = sites_arr.length - o.max_vis_sides;
+		var disp_sides_len = sides_arr.length - o.max_vis_sides;
 
-		for (var i = disp_sides_len; i < sites_arr.length; i++) {
+		for (var i = disp_sides_len; i < sides_arr.length; i++) {
 
-			var site = o.sites[sites_arr[i].key];
+			var side = o.sides[sides_arr[i].key];
 			var v = [];
 
 			var ret = 0;
 
-			for (var k = 0; k < site.length; k++) {
-				v.push(vectors[site[k]]);
+			for (var k = 0; k < side.vert.length; k++) {
+				v.push(vectors[side.vert[k]]);
 				if (v[k].hidden) {
 					ret = 1;
 				}
@@ -277,10 +303,10 @@ function draw_objs() {
 			if (ret == 1) continue;
 
 			ctx.beginPath();
-			ctx.fillStyle = colors[sites_arr[i].key];
+			ctx.fillStyle = side.color;
 
-			ctx.moveTo(v[site.length - 1].screenX, v[site.length - 1].screenY);
-			for (var k = 0; k < site.length; k++) {
+			ctx.moveTo(v[side.vert.length - 1].screenX, v[side.vert.length - 1].screenY);
+			for (var k = 0; k < side.vert.length; k++) {
 
 
 				ctx.lineTo(v[k].screenX, v[k].screenY);
@@ -290,19 +316,11 @@ function draw_objs() {
 			ctx.stroke();
 			ctx.closePath();
 		}
+		delete o.hidden;
+		delete o.dist_sq;
+		delete o.disp;
 	}
-}
-
-var Vector3D = function(o1, o2) {
-	this.x = o1.x - o2.x;
-	this.y = o1.y - o2.y;
-	this.z = o1.z - o2.z;
-	this.size = Math.sqrt(Math.sq_sum(this.x, this.y, this.z))
-	this.unit = {
-		x: this.x / this.size,
-		y: this.y / this.size,
-		z: this.z / this.size,
-	}
+	editor.check_vertex();
 }
 
 function move_player() {
@@ -316,8 +334,8 @@ function move_player() {
 	player.y += player.speed * player.across * Vx;
 
 
-	player.camera.rotate((canvas.width / 2 - player.mouse.x) / 300);
-	player.camera.rotate2(-(canvas.height / 2 - player.mouse.y) / 300);
+	player.camera.rotate((canvas.width / 2 - player.mouse.x) * player.camera.speed / canvas.width);
+	player.camera.rotate2((canvas.height / 2 - player.mouse.y) * player.camera.speed / canvas.height);
 
 	if (player.z > board.maxZ) player.z = board.maxZ;
 	if (player.z < board.minZ) player.z = board.minZ;
@@ -346,7 +364,6 @@ function draw_miniMap() {
 	ctx.arc(canvas.width - 70, 70, 50, -player.camera.alpha - angle / 2, -player.camera.alpha + angle / 2, false)
 
 	ctx.fill();
-	2
 	ctx.closePath();
 }
 
@@ -357,7 +374,7 @@ function draw_MS_FPS(ms) {
 	if (frame_times.arr.length > 50) frame_times.sum -= frame_times.arr.shift();
 	var av_ms = frame_times.sum / frame_times.arr.length;
 
-	ctx.font = '15px Arial'
+	ctx.font = '15px Arial';
 	ctx.fillStyle = 'black';
 	ctx.fillText('FPS: ' + Math.floor(1000 / av_ms), 20, 20)
 }

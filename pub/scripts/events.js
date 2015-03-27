@@ -1,3 +1,5 @@
+"use strict";
+
 function event_handlers() {
 	$('canvas').mousemove(function(e) {
 		if (!e.ctrlKey) {
@@ -8,26 +10,46 @@ function event_handlers() {
 			player.mouse.y = canvas.height / 2;
 		}
 	});
+	$(window).on('beforeunload', function(e) {
+		if(editor.opened)
+	        return 'You have unsaved stuff. Are you sure to leave?';
+	});
 	$(window).keydown(function(e) {
+		if(e.ctrlKey && e.keyCode == 84) { 
+			console.log('aa');
+			e.preventDefault();
+			return false;
+		}
+		if(e.ctrlKey || e.altKey) {
+			player.mouse.x = canvas.width / 2;
+			player.mouse.y = canvas.height / 2;
+		}
 		switch (e.which) {
 			case 9: //tab
 				return false;
 				break;
 			case 87:
 				player.straight = 1;
+				return false;
 				break;
 			case 83:
 				player.straight = -1;
+				return false;
 				break;
 			case 68:
 				player.across = 1;
+				return false;
 				break;
 			case 65:
 				player.across = -1;
+				return false;
 				break;
 			case 81: // Q
 				break;
 			case 69: // E
+				break;
+			case 192: // tylda
+				editor.toggle();
 				break;
 		}
 	}).keyup(function(e) {

@@ -4,4 +4,14 @@ html(lang="pl")
 		title Big Space Project
 		include ./meta.jade
 	body(onload="main()")
-		canvas
+		canvas#game
+		div#editor
+			div#map-editor
+				h2
+				a.button(onclick="editor.prev()") Prev
+				a.button(onclick="editor.next()") Next
+				div.stats
+				a.button(onclick="editor.apply()") Apply changes
+				a.button(onclick="editor.reset()") Reset
+				a.button(onclick="editor.copy()") Copy
+				a.button.negative(onclick="editor.remove()") Delete

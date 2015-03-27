@@ -1,0 +1,88 @@
+@font-face{
+	font-family: Lato;
+	src:url('../fonts/lato/Lato-Hairline.ttf') format('truetype');
+	font-weight: 100;
+}
+@font-face{
+	font-family: Lato;
+	src:url('../fonts/lato/Lato-Light.ttf') format('truetype');
+	font-weight: 200;
+}
+@font-face{
+	font-family: Lato;
+	src:url('../fonts/lato/Lato-Regular.ttf') format('truetype');
+	font-weight: 400;
+}
+
+body {
+	margin: 0;
+	overflow: hidden;
+	font-family: Lato;
+}
+canvas#game {
+	display: block;
+	background: white;
+	cursor: crosshair;
+}
+
+div#editor {
+	display: none;
+	position: absolute;
+	top: 0;
+	right: 0;	
+	height: 100%;
+	width: 350px;
+	background: #EEE;
+	box-shadow: 0 0 10px #555;
+}
+
+div#map-editor {
+	overflow-y: scroll;
+ 	height: 100%;
+ 	text-align: center;
+}
+a.button {
+	margin: 0 3px;
+}
+div.stats {
+	text-align: left;
+	padding: 10px 0;
+}
+
+ul {
+	margin-left: 0;
+	padding-left: 25px;
+	margin-top: 10px;
+}
+ul.hidden {
+	display: none;
+}
+li {
+	position: relative;
+	min-height: 30px;
+	list-style: none;
+}
+li:before {
+  content: "\002022";
+  color: #18e;
+  padding-right: 10px;
+}
+li.lista > span {
+	cursor: pointer;
+	color: blue;
+}
+li.lista > span:hover {
+	color: red;
+}
+
+input {
+	position: absolute;
+	right: 0;
+	width: 100px;
+}
+
+h2 {
+  margin: 10px;
+  text-align: center;
+  font-weight: 200;
+}
