@@ -1,3 +1,4 @@
+"use strict";
 var cube_proto = {
 	vertices: [
 		[-1, -1, -1],
@@ -50,11 +51,11 @@ var diamond_proto = {
 		['#5f5', 2, 3, 5],
 		['#9A3', 0, 3, 5],
 
-		
+
 		['#4C8', 1, 2, 4],
 		['#5dd', 2, 3, 4],
-	 	['#0a4', 0, 3, 4],
-	 	['#AF5', 0, 1, 4],
+		['#0a4', 0, 3, 4],
+		['#AF5', 0, 1, 4],
 	]
 }
 
@@ -68,11 +69,11 @@ var dach_proto = {
 		[1, 0, 1],
 	],
 	sides: [
-		[0, 1, 4],
+		['#FFE', 0, 1, 4],
 		['#E96B39', 0, 3, 5, 4],
 		['#E96B39', 1, 2, 5, 4],
-		[2, 3, 5],
-		[0, 1, 2, 3]
+		['#FFE', 2, 3, 5],
+		['#FFF', 0, 1, 2, 3]
 	]
 }
 
@@ -92,15 +93,17 @@ var podstawa_proto = {
 		[-1, 0.25, 0],
 		[-1, -0.25, 0],
 
-
+		[-0.7, 0.25, 0],
+		[-0.7, 0.25, -1]
 	],
 	sides: [
 		[0, 1, 3, 2, 8, 10, 11, 9],
 		[0, 1, 5, 4],
-		[0, 2, 6, 4],
+		['#FFF', 0, 2, 6, 4],
 		//[1, 3, 7, 5],
 		[2, 3, 7, 6],
-		[4, 5, 7, 6]
+		[4, 5, 7, 6],
+		['rgba(100, 50, 0, 0.8', 8, 10, 12, 13] // drzwi
 	]
 }
 
@@ -123,4 +126,31 @@ var komin_proto = {
 		['#310', 2, 3, 7, 6],
 		['#310', 4, 5, 7, 6]
 	]
+}
+
+var ground_proto = {};
+
+function create_ground(x, y) {
+	ground_proto = {
+		vertices: [],
+		sides: []
+	}
+
+	for (var i = 0; i < x; i++) {
+		for (var j = 0; j < y; j++) {
+			ground_proto.vertices.push([i - x / 2, j - y / 2, Math.random() - 0.5]);
+		}
+	}
+	for (var i = 0; i < x - 1; i++) {
+		for (var j = 0; j < y - 1; j++) {
+			ground_proto.sides.push([x * j + i, x * j + i + 1, x * (j + 1) + i + 1, x * (j + 1) + i]);
+		}
+	}
+}
+
+function house (x, y, z) {
+	if(!z) z =0;
+	ob.push(new Shape('podstawa', x, y, z-600, [1200, 800, 600]));
+	ob.push(new Shape('dach', x, y, z, [1400, 1000, 600]));
+	ob.push(new Shape('komin', x, y + 200, z + 100, [100, 100, 200]));
 }

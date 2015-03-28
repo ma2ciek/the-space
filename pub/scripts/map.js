@@ -2,22 +2,16 @@
 
 //################################## CREATING OBJECTS ####################################
 
-ob.push(new Shape('diamond', -1000, 2500, 0, [200, 200, 500]));
+ob.push(new Shape('diamond', -1000, 2500, 0, [200, 200, 500], false, [0, 0, 1]));
+ob.push(new Shape('cube', -500, 1000, 0, 200, false, [1, 0, 1]));
 
-for (var i = 2; i < 6; i++) {
-	for (var j = 2; j < 6; j++) {
-		ob.push(new Shape('cube', i * 500, j * 500, 0, 200));
-		ob.push(new Shape('cube', i * 500, j * 500, 500, 200, 1));
-	}
-}
-ob[0].rotateZ = 0.01;
-ob[1].rotateX = 0.01;
-ob[1].rotateZ = 0.01;
-ob[2].rotateY = 0.025;
+house(2000, -1400);
+house(2000, 0);
+house(2000, 1400);
+house(2000, 2800);
+house(2000, 4200);
 
-ob.push(new Shape('podstawa', -1000, -1000, -600, [1200, 800, 600]));
-ob.push(new Shape('dach', -1000, -1000, 0, [1400, 1000, 600]));
-ob.push(new Shape('komin', -1000, -800, 100, [100, 100, 200]))
+ob.push(new Shape('ground', 1000, 1000, -900, [2000, 2000, 100]));
 
 /*
 ob.push(new Shape('cube', board.minX, board.minY, board.minZ, [board.maxX - board.minX, board.maxY - board.minY, 1]))

@@ -34,15 +34,30 @@ div#editor {
 	width: 350px;
 	background: #EEE;
 	box-shadow: 0 0 10px #555;
-}
-
-div#map-editor {
-	overflow-y: scroll;
- 	height: 100%;
+	overflow-y: auto;
  	text-align: center;
+ 	padding: 0 10px;
+ 	box-sizing: border-box;
 }
 a.button {
 	margin: 0 3px;
+}
+.nav {
+	margin-top: 10px;
+	display: flex;
+	border-bottom: 1px solid #DDD;
+	padding-bottom: 10px;
+}
+.nav a {
+	height: 20px;
+	line-height: 20px;
+	width: 60px;
+	margin: 0;
+}
+.nav h2 {
+	font-weight: 200;
+	flex-grow: 1;
+	margin: 0;
 }
 div.stats {
 	text-align: left;
@@ -50,17 +65,18 @@ div.stats {
 }
 
 ul {
-	margin-left: 0;
+	margin: 0;
 	padding-left: 25px;
-	margin-top: 10px;
 }
 ul.hidden {
 	display: none;
 }
 li {
 	position: relative;
-	min-height: 30px;
 	list-style: none;
+	min-height: 25px;
+	margin-bottom: 5px;
+	line-height: 25px;
 }
 li:before {
   content: "\002022";
@@ -75,14 +91,43 @@ li.lista > span:hover {
 	color: red;
 }
 
+li.flex {
+	display: flex;
+}
+li.flex > span {
+	min-width: 70px;
+}
+li.flex > ul {
+	display: flex;
+	flex: 1;
+	padding: 0;
+}
+li.flex > ul > li {
+	flex: 1;
+	margin-bottom: 0;
+	margin-left: 10px;
+}
+li.flex > ul > li > span {
+	display: none;
+}
+li.flex > ul > li > input {
+	width: 100%;
+}
+
+div.stats > ul {
+	padding-left: 0;
+}
+div.stats > ul > li:before,
+li.flex > ul > li:before {
+	content: "";
+}
+
 input {
 	position: absolute;
 	right: 0;
 	width: 100px;
+	padding: 4px 8px;
+	border: 1px solid #CCC;
+	box-sizing: border-box;
 }
 
-h2 {
-  margin: 10px;
-  text-align: center;
-  font-weight: 200;
-}

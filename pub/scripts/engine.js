@@ -14,7 +14,7 @@ var canvas = {
 	width: window.innerWidth,
 	height: window.innerHeight,
 	adjust: function() {
-		canvas.width = window.innerWidth - editor.opened * editor.width;
+		canvas.width = window.innerWidth - editor.on * editor.width();
 		canvas.height = window.innerHeight;
 		$('#game').attr('width', canvas.width + 'px');
 		$('#game').attr('height', canvas.height + 'px');
@@ -24,7 +24,7 @@ var canvas = {
 }
 
 var player = {
-	x: 0,
+	x: -5000,
 	y: 0,
 	z: 0,
 	dirZ: 0,
@@ -69,7 +69,15 @@ Camera.prototype.rotate2 = function(rotation) {
 	if (this.beta > Math.PI / 2) this.beta = Math.PI / 2;
 	if (this.beta < -Math.PI / 2) this.beta = -Math.PI / 2;
 }
-
+Camera.prototype.zoom = function(e) {
+	if ($(e.target).closest('canvas').length > 0) {
+		e.preventDefault();
+		var delta = -e.originalEvent.deltaY;
+		player.camera.distance += delta;
+		if (player.camera.distance > 4000) player.camera.distance = 4000;
+		if (player.camera.distance < 1000) player.camera.distance = 1000;
+	}
+}
 function loop() {
 
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -87,38 +95,51 @@ function setCanvasDim() {
 
 }
 
-function Shape(type, x, y, z, size, opacity) {
+function Shape(type, x, y, z, size, rot, rotSp) {
 	var proto, max_vis_sides;
 	if (typeof size == 'number') {
 		var s = size;
 		size = [s, s, s];
 	}
 	this.type = type;
+
+	this.pos = {
+		x: x,
+		y: y,
+		z: z
+	};
+	this.size = {
+		x: size[0],
+		y: size[1],
+		z: size[2]
+	};
+
 	switch (type) {
 		case 'cube':
 			proto = cube_proto;
-			max_vis_sides = 6;
 			break;
 		case 'diamond':
 			proto = diamond_proto;
-			max_vis_sides = 6;
 			break;
 		case 'dach':
 			proto = dach_proto;
-			max_vis_sides = 5;
 			break;
 		case 'podstawa':
 			proto = podstawa_proto;
-			max_vis_sides = 5;
 			break;
 		case 'komin':
 			proto = komin_proto;
-			max_vis_sides = 5;
+			break;
+		case 'ground':
+			create_ground(20, 20);
+			proto = ground_proto;
 			break;
 		default:
 			console.error('Brak figury: ' + type);
 			break;
 	};
+
+	if(max_vis_sides === undefined) max_vis_sides = proto.sides.length;
 
 	this.vertices = []
 
@@ -130,7 +151,6 @@ function Shape(type, x, y, z, size, opacity) {
 		})
 	}
 	this.sides = [];
-	if (opacity == undefined || opacity == null) opacity = 0.5;
 	for (var i = 0; i < proto.sides.length; i++) {
 		if (typeof proto.sides[i][0] == 'string') {
 			this.sides.push({
@@ -139,45 +159,60 @@ function Shape(type, x, y, z, size, opacity) {
 			});
 		} else {
 			this.sides.push({
-				color: 'rgba(' + los(255) + ',' + los(255) + ',' + los(255) + ',' + opacity +')',
+				color: 'rgba(' + los(255) + ',' + los(255) + ',' + los(255) + ',' + 0.5 +')',
 				vert: proto.sides[i].slice(0)
 			});
 		}
 	}
-	this.pos = {
-		x: x,
-		y: y,
-		z: z
-	};
-	this.size = {
-		x: size[0],
-		y: size[1],
-		z: size[2]
+
+	
+	if(!rotSp) {
+		rotSp = [0,0,0];
+		this.isRotate = 0;
 	}
+	else this.isRotate = 1;
+	this.rotSp = {
+		x: 0 || rotSp[0] * 2*Math.PI / 1000,
+		y: 0 || rotSp[1] * 2*Math.PI / 1000,
+		z: 0 || rotSp[2] * 2*Math.PI / 1000,
+	};
+	if(!rot) rot = [0,0,0];
+	this.rot = {
+		x: 0 || rot[0],
+		y: 0 || rot[1],
+		z: 0 || rot[2],
+	};
 	this.max_vis_sides = max_vis_sides;
-	this.rotateZ = 0;
-	this.rotateX = 0;
-	this.rotateY = 0;
 }
 
 Shape.prototype.rotate = function() {
 	for (var i = 0; i < this.vertices.length; i++) {
+
 		var v = this.vertices[i];
-		var z = v.z;
-		var y = v.y;
-		v.z = z * Math.cos(this.rotateX) - y * Math.sin(this.rotateX);
-		v.y = z * Math.sin(this.rotateX) + y * Math.cos(this.rotateX);
 
-		var z = v.z;
-		var x = v.x;
-
-		v.x = z * Math.sin(this.rotateY) + x * Math.cos(this.rotateY);
-		v.z = z * Math.cos(this.rotateY) - x * Math.sin(this.rotateY);
+		this.rot.x += this.rotSp.x;
+		this.rot.y += this.rotSp.y;
+		this.rot.z += this.rotSp.z;
 
 		var x = v.x;
 		var y = v.y;
-		v.x = x * Math.cos(this.rotateZ) - y * Math.sin(this.rotateZ);
-		v.y = x * Math.sin(this.rotateZ) + y * Math.cos(this.rotateZ);
+		var z = v.z;
+
+		v.realPos = {};
+
+		v.realPos.z = z * Math.cos(this.rot.x) - y * Math.sin(this.rot.x);
+		v.realPos.y = z * Math.sin(this.rot.x) + y * Math.cos(this.rot.x);
+
+		z = v.realPos.z;
+		y = v.realPos.y;
+
+		v.realPos.x = z * Math.sin(this.rot.y) + x * Math.cos(this.rot.y);
+		v.realPos.z = z * Math.cos(this.rot.y) - x * Math.sin(this.rot.y);
+
+		x = v.realPos.x;
+		
+		v.realPos.x = x * Math.cos(this.rot.z) - y * Math.sin(this.rot.z);
+		v.realPos.y = x * Math.sin(this.rot.z) + y * Math.cos(this.rot.z);
 	}
 }
 
@@ -205,14 +240,17 @@ function draw_objs() {
 
 	var ob_array = [];
 	for (var i = 0; i < ob.length; i++) {
-		var o = ob[i].pos;
+		var pos = ob[i].pos;
 		ob_array.push({
-			key: i
+			key: i,
+			dist_sq: Math.sq_sum(pos.x - player.x, pos.y - player.y, pos.z - player.z),
+			type: ob[i].type
 		});
-		ob_array[i].dist_sq = Math.sq_sum(o.x - player.x, o.y - player.y, o.z - player.z);
 	}
 	ob_array.sort(function(a, b) {
-		return b.dist_sq - a.dist_sq;
+		if(b.type == 'ground') return Infinity ;
+		else if(a.type == 'ground') return -Infinity;
+		else return b.dist_sq - a.dist_sq;
 	})
 
 
@@ -220,18 +258,28 @@ function draw_objs() {
 	for (var j = 0; j < ob.length; j++) {
 
 		var o = ob[ob_array[j].key];
+		o.hidden = true;
 
-		o.rotate();
+		if(o.isRotate == 1) o.rotate();
 		var vectors = [];
 
 		/* Pomocnicze */
 		var max_dist = 0;
 		for (var i = 0; i < o.vertices.length; i++) {
-			var realVertex = {
-				x: o.vertices[i].x * o.size.x / 2 + o.pos.x,
-				y: o.vertices[i].y * o.size.y / 2 + o.pos.y,
-				z: o.vertices[i].z * o.size.z / 2 + o.pos.z
+			if(o.isRotate == 1) {
+				var realVertex = {
+					x: o.vertices[i].realPos.x * o.size.x / 2 + o.pos.x,
+					y: o.vertices[i].realPos.y * o.size.y / 2 + o.pos.y,
+					z: o.vertices[i].realPos.z * o.size.z / 2 + o.pos.z
+				}
+				delete o.vertices[i].realPos;
 			}
+			else 
+				var realVertex = {
+					x: o.vertices[i].x * o.size.x / 2 + o.pos.x,
+					y: o.vertices[i].y * o.size.y / 2 + o.pos.y,
+					z: o.vertices[i].z * o.size.z / 2 + o.pos.z
+				}
 			vectors.push(new Vector3D(realVertex, player));
 			var v1 = vectors[i]; // vectors to vertices
 
@@ -247,8 +295,8 @@ function draw_objs() {
 			v3.y = v2.z * Math.sin(c.beta) + v2.y * Math.cos(c.beta);
 			v3.z = -v2.z * Math.cos(c.beta) + v2.y * Math.sin(c.beta);
 
-			v1.screenX = v3.x * c.distance / (v3.y) + c.width / 2;
-			v1.screenY = v3.z * c.distance / (v3.y) + c.height / 2;
+			v1.screenX = (v3.x * c.distance / (v3.y) + c.width / 2).toFixed(2);
+			v1.screenY = (v3.z * c.distance / (v3.y) + c.height / 2).toFixed(2);
 			o.vertices[i].screenX = v1.screenX;
 			o.vertices[i].screenY = v1.screenY;
 
@@ -256,12 +304,12 @@ function draw_objs() {
 
 
 			if (v1.screenX > 0 && v1.screenX < canvas.width && v1.screenY > 0 && v1.screenY < canvas.height) {
-				o.disp = 1;
+				o.hidden = false;
 			}
 		}
 		window.vectors = vectors;
 
-		if (!o.disp) continue;
+		if (o.hidden) continue;
 
 
 		//################### SORTOWANIE ŚCIAN ##########################
@@ -305,20 +353,20 @@ function draw_objs() {
 			ctx.beginPath();
 			ctx.fillStyle = side.color;
 
-			ctx.moveTo(v[side.vert.length - 1].screenX, v[side.vert.length - 1].screenY);
-			for (var k = 0; k < side.vert.length; k++) {
-
-
-				ctx.lineTo(v[k].screenX, v[k].screenY);
+			try {
+				ctx.moveTo(v[side.vert.length - 1].screenX, v[side.vert.length - 1].screenY);
+				for (var k = 0; k < side.vert.length; k++) {
+					ctx.lineTo(v[k].screenX, v[k].screenY);
+				}
+			} catch(err) {
+				console.log(v, side, err);
 			}
 
 			ctx.fill();
 			ctx.stroke();
 			ctx.closePath();
 		}
-		delete o.hidden;
 		delete o.dist_sq;
-		delete o.disp;
 	}
 	editor.check_vertex();
 }
@@ -368,7 +416,6 @@ function draw_miniMap() {
 }
 
 function draw_MS_FPS(ms) {
-
 	frame_times.arr.push(ms || 0);
 	frame_times.sum += ms || 0;
 	if (frame_times.arr.length > 50) frame_times.sum -= frame_times.arr.shift();

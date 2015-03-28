@@ -1,47 +1,63 @@
 "use strict"
 
 var editor = {
-	opened: 0,
-	width: 300,
+	on: 0,
+	width: function() {
+		return $('#editor').outerWidth();
+	},
 	toggle: function() {
-		this.opened == 1 ? this.close() : this.open();
+		this.on == 1 ? this.close() : this.open();
 		canvas.adjust();
 	},
 	close: function() {
 		$('#editor').hide();
-		this.opened = 0;
+		this.on = 0;
 	},
 	open: function() {
 		$('#editor').show();
-		this.opened = 1;
-		this.sos(this.id);
+		this.on = 1;
+		if(this.id == null) this.sos(0);
 	},
 
-	id: 0, // editing element id
+	id: null, // editing element id
 
-	sos(id) { // show object stats
+	sos: function (id) { // show object stats
 		try {
 			delete ob[this.id].selected
 			ob[id].selected = 1;
-		}
-		catch (err) {
+		} catch (err) {
 			console.log(err);
 		}
 
-		
+
 		this.id = id;
 
 		var o = $('div.stats').text('');
 
-		$('h2').text('Selected object: [' + id + ']');
+		
 
 		// funkcja rekurencyjna przeszukująca cały obiekt:
 		this.show_sub_elem(ob[id], o, 0);
 
-		$('li.lista > span').click(function() {
+		$('h2').text(ob[id].type[0].toUpperCase() + ob[id].type.slice(1) + ' [' + id + ']');
+
+		$('li.lista > span').on('click',function() {
 			$(this).parent().find('ul').toggleClass('hidden');
 		});
 		$('li.lista > ul').addClass('hidden');
+
+		$("li[data-obj='vertices'] > ul").append("<button class='copy'>ADD</button>")
+		$("li[data-obj='sides'] > ul").append("<button class='copy'>ADD</button>")
+		$('div.stats button.copy').on('click', function() {
+			var li = $(this).prev('li').clone().insertBefore($(this));
+			var nr = li.prevAll().length;
+			li.attr('data-obj', nr);
+			li.find('span').eq(0).text(nr);
+		});
+		var flex_obj = $('[data-obj="pos"], [data-obj="size"], [data-obj="rot"], [data-obj="rotSp"]')
+		flex_obj.toggleClass('lista flex').off('click');
+
+		$("li[data-obj='selected'], li[data-obj='type']").hide();
 	},
 
 
@@ -85,7 +101,7 @@ var editor = {
 	},
 	copy: function() {
 		ob.push(JSON.parse(JSON.stringify(ob[this.id])))
-		ob[ob.length - 1].rotate = Shape.prototype.rotate;
+		ob.last().rotate = Shape.prototype.rotate;
 		this.sos(ob.length - 1);
 	},
 
@@ -95,7 +111,7 @@ var editor = {
 
 		if (li.attr('data-type') == 'number')
 			arr.push(+li.attr('data-obj'))
-		else if(li.attr('data-type') == 'string')
+		else if (li.attr('data-type') == 'string')
 			arr.push(li.attr('data-obj'))
 
 		if (li.find('ul').length != 0) {
@@ -106,20 +122,23 @@ var editor = {
 		} else {
 			var o = ob[this.id];
 			while (arr.length > 1) {
-				if (Array.isArray(o))
-					o = o[arr.shift()];
-				else
-					o = o[arr.shift()];
+				if (o[arr[0]] == undefined) o[arr[0]] = [];
+				o = o[arr.shift()]
 			}
-			if (li.find('input').attr('data-type') == 'number')
-				o[arr[0]] = +li.find('input').val();
-			else
-				o[arr[0]] = li.find('input').val();
+			try {
+				if (li.find('input').attr('data-type') == 'number')
+					o[arr[0]] = +li.find('input').val();
+				else
+					o[arr[0]] = li.find('input').val();
+			}
+			catch(err) {
+				console.log(o, arr, li.find('input').val());
+			}
 		}
 	},
 
 	check_vertex: function() {
-		if (this.opened) {
+		if (this.on) {
 			var v = ob[this.id].vertices;
 			for (var i in v) {
 				ctx.beginPath();

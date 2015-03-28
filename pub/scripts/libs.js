@@ -28,3 +28,7 @@ var Vector3D = function(o1, o2) {
 var los = function(x) { 
 	return Math.floor(Math.random() * x)
 }
+
+var abort = function (e) {
+	e.preventDefault();
+}
