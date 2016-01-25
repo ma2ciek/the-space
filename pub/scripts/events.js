@@ -21,7 +21,7 @@ function event_handlers() {
 		if (e.which == 27) editor.toggle();
 
 		if ($('input:focus').length > 0) {
-			unsaved = true;
+			editor.unsaved = true;
 			return;
 		}
 
@@ -83,14 +83,12 @@ function event_handlers() {
 	$('body').bind('mousewheel', player.camera.zoom);
 
 	$("a.button, button").on('click', function() { //trigers change in all input fields including text type
-		unsaved = true;
+		editor.unsaved = true;
 	});
 }
 
-var unsaved = false;
-
 function unloadPage() {
-	if (unsaved) {
+	if (editor.unsaved) {
 		return "You have unsaved changes on this page.";
 	}
 }

@@ -1,11 +1,20 @@
 "use strict";
 
 function main() {
+	
+	var t1 = Date.now();
+
 	player.camera = new Camera(2000, 0, 0);
-	event_handlers();
-	setCanvasDim();
 
 	ctx = $('#game')[0].getContext('2d');
+
+	event_handlers();
+	
+	map_create();
+	
+	canvas.setDim();
+
+	console.log("Czas załadowania gry: " + ( Date.now() - t1) + 'ms');
 
 	loop();
 }
@@ -13,14 +22,18 @@ function main() {
 var canvas = {
 	width: window.innerWidth,
 	height: window.innerHeight,
-	adjust: function() {
-		canvas.width = window.innerWidth - editor.on * editor.width();
-		canvas.height = window.innerHeight;
+	setDim: function () {
 		$('#game').attr('width', canvas.width + 'px');
 		$('#game').attr('height', canvas.height + 'px');
+	},
+	adjust: function() {
+		canvas.width = window.innerWidth - editor.on * editor.width();
+		canvas.height = window.innerHeight;	
 		player.mouse.x = canvas.width / 2;
 		player.mouse.y = canvas.height / 2;
-	}
+		canvas.setDim();
+	},
+	
 }
 
 var player = {
@@ -33,11 +46,11 @@ var player = {
 	camera: {},
 	speed: 20,
 	rotate: 0,
+	rotate2: 0,
 	mouse: {
 		x: canvas.width / 2,
 		y: canvas.height / 2
 	},
-	rotate2: 0
 }
 
 var ctx;
@@ -52,7 +65,7 @@ var board = {
 	maxZ: 10000,
 }
 
-var Camera = function(distance, alpha, beta) {
+function Camera (distance, alpha, beta) {
 	this.width = canvas.width;
 	this.height = canvas.height;
 	this.distance = distance;
@@ -78,31 +91,26 @@ Camera.prototype.rotate2 = function(rotation) {
 	this.CB = Math.cos(this.beta);
 }
 Camera.prototype.zoom = function(e) {
+	// do zmiany
+	console.log(this);
 	if ($(e.target).closest('canvas').length > 0) {
 		e.preventDefault();
 		var delta = -e.originalEvent.deltaY;
 		player.camera.distance += delta;
 		if (player.camera.distance > 4000) player.camera.distance = 4000;
 		if (player.camera.distance < 1000) player.camera.distance = 1000;
+		
 	}
 }
 
 function loop() {
-	canvas.renderTime -= Date.now();
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	canvas.renderTime += Date.now();
 	move_player();
 	draw_objs();
 	draw_miniMap();
 	draw_info(Date.now() - (canvas.ts || Date.now()));
 	canvas.ts = Date.now();
 	window.requestAnimationFrame(loop);
-}
-
-function setCanvasDim() {
-	$('#game').attr('width', canvas.width + 'px');
-	$('#game').attr('height', canvas.height + 'px');
-
 }
 
 function Shape(type, x, y, z, size, rot, rotSp) {
@@ -174,24 +182,27 @@ function Shape(type, x, y, z, size, rot, rotSp) {
 			});
 		}
 	}
+	this.isRotate = 0;
 
-
-	if (!rotSp) {
-		rotSp = [0, 0, 0];
-		this.isRotate = 0;
-	} else this.isRotate = 1;
+	if (!rotSp) rotSp = [0, 0, 0];
+	else this.isRotate = 1;
 	this.rotSp = {
 		x: 0 || rotSp[0] * 2 * Math.PI / 1000,
 		y: 0 || rotSp[1] * 2 * Math.PI / 1000,
 		z: 0 || rotSp[2] * 2 * Math.PI / 1000,
 	};
+
 	if (!rot) rot = [0, 0, 0];
+	else this.isRotate = 1;
 	this.rot = {
 		x: 0 || rot[0],
 		y: 0 || rot[1],
 		z: 0 || rot[2],
 	};
+
 	this.max_vis_sides = max_vis_sides;
+	this.hidden = false;
+	this.selected = 0;
 }
 
 Shape.prototype.rotate = function() {
@@ -227,32 +238,103 @@ Shape.prototype.rotate = function() {
 
 var ob = [];
 
-ob.last = function() {
-	return ob[ob.length - 1];
-}
-
 function draw_objs() {
 	canvas.all_display_sides = 0;
-	var c = player.camera;
-	var colors = [
-		'#09f',
-		'blue',
-		'purple',
-		'green',
-		'grey',
-		'orange',
-		'yellow',
-		'#983',
-	]
+	
 	ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-
-	canvas.renderTime = 0;
-	canvas.sortingTime = 0;
-	canvas.mathTime = 0;
 
 	//###################### SORTOWANIE OBIEKTÓW ############################
 
-	canvas.sortingTime -= Date.now();
+	var ob_array = objects_sort();
+
+	for (var j = 0; j < ob.length; j++) {
+
+		var o = ob[ob_array[j].key];
+
+		if (o.isRotate) o.rotate();
+
+		var vectors = create_vectors(ob_array[j].key);
+
+		if (o.hidden) continue;
+
+		//################### SORTOWANIE ŚCIAN ##########################
+
+		var sides_arr = sides_sort(ob_array[j].key, vectors);
+
+		// SPEED BOOST - usunięcie niewidocznych krawędzi
+		var hidden_sides_len = sides_arr.length - o.max_vis_sides;
+
+		for (var i = hidden_sides_len; i < sides_arr.length; i++) {
+
+			var side = o.sides[sides_arr[i].key];
+
+			if(side_display_test(vectors, side)) continue;
+
+			canvas.all_display_sides++;
+
+			side_render(side, vectors);
+		}
+	}
+	editor.check_vertex();
+}
+
+function create_vectors(o_key) {
+	var o = ob[o_key];
+	var vectors = [];
+	var v1, v2, v3;
+	var c = player.camera;
+	for (var i = 0; i < o.vertices.length; i++) {
+		if (o.isRotate == 1)
+			vectors.push(new Vector3D({
+				x: o.vertices[i].realPos.x * o.size.x / 2 + o.pos.x,
+				y: o.vertices[i].realPos.y * o.size.y / 2 + o.pos.y,
+				z: o.vertices[i].realPos.z * o.size.z / 2 + o.pos.z
+			}, player));
+		else
+			vectors.push(new Vector3D({
+				x: o.vertices[i].x * o.size.x / 2 + o.pos.x,
+				y: o.vertices[i].y * o.size.y / 2 + o.pos.y,
+				z: o.vertices[i].z * o.size.z / 2 + o.pos.z
+			}, player));
+
+		v1 = vectors[i]; // vectors to vertices
+
+		v2 = new Point(
+			v1.y * c.CA + v1.x * c.SA, //
+			-v1.y * c.SA + v1.x * c.CA, //
+			v1.z
+		);
+
+		v3 = new Point(
+			v2.x,
+			v2.z * c.SB + v2.y * c.CB,
+			v2.z * -c.CB + v2.y * c.SB
+		);
+
+		v1.screenX = (v3.x * c.distance / (v3.y) + canvas.width / 2);
+		v1.screenY = (v3.z * c.distance / (v3.y) + canvas.height / 2);
+
+		// Do poprawy - psuje optymalizację!
+		// o.vertices[i].screenX = v1.screenX;
+		// o.vertices[i].screenY = v1.screenY;
+
+		if (v3.y < 0 || v3.y > 50000) {
+			// obiekt jest daleko lub z tyłu
+			v1.hidden = true;
+			continue;
+		}
+
+		v1.hidden2 = true;
+
+		if (v1.screenX > 0 && v1.screenX < canvas.width && v1.screenY > 0 && v1.screenY < canvas.height && v3.y > 0) {
+			o.hidden = false; // jakaś ściana obiektu może się wyświetlić, bo przynajmniej jeden wierzchołek się wyświetla
+			v1.hidden2 = false;
+		}
+	}
+	return vectors;
+}
+
+function objects_sort() {
 	var ob_array = [];
 	for (var i = 0; i < ob.length; i++) {
 		var pos = ob[i].pos;
@@ -267,147 +349,63 @@ function draw_objs() {
 		else if (a.type == 'ground') return -Infinity;
 		else return b.dist_sq - a.dist_sq;
 	})
-	canvas.sortingTime += Date.now();
-
-	var v1 = {},
-		v2 = {},
-		v3 = {},
-		realVertex = {},
-		sides_arr = [];
-
-	for (var j = 0; j < ob.length; j++) {
-		canvas.mathTime -= Date.now();
-
-		var o = ob[ob_array[j].key];
-		o.hidden = true;
-
-		if (o.isRotate == 1) o.rotate();
-
-		var vectors = [];
-
-		for (var i = 0; i < o.vertices.length; i++) {
-			if (o.isRotate == 1) {
-				realVertex = new wsp3D(
-					o.vertices[i].realPos.x * o.size.x / 2 + o.pos.x,
-					o.vertices[i].realPos.y * o.size.y / 2 + o.pos.y,
-					o.vertices[i].realPos.z * o.size.z / 2 + o.pos.z
-				);
-				delete o.vertices[i].realPos;
-			} else
-				realVertex = new wsp3D(
-					o.vertices[i].x * o.size.x / 2 + o.pos.x,
-					o.vertices[i].y * o.size.y / 2 + o.pos.y,
-					o.vertices[i].z * o.size.z / 2 + o.pos.z
-				);
-			vectors.push(new Vector3D(realVertex, player));
-			v1 = vectors[i]; // vectors to vertices
-
-			v2 = new wsp3D(
-				v1.y * c.CA + v1.x * c.SA, 
-				-v1.y * c.SA + v1.x * c.CA,
-				v1.z
-			);
-
-			v3 = new wsp3D(
-				v2.x,
-				v2.z * c.SB + v2.y * c.CB,
-				v2.z * -c.CB + v2.y * c.SB
-			);
-
-			v1.screenX = (v3.x * c.distance / (v3.y) + canvas.width / 2);
-			v1.screenY = (v3.z * c.distance / (v3.y) + canvas.height / 2);
-
-			o.vertices[i].screenX = v1.screenX;
-			o.vertices[i].screenY = v1.screenY;
-
-			if (v3.y < 0) v1.hidden = true;
-
-			v1.hidden2 = true;
-
-			if (v1.screenX > 0 && v1.screenX < canvas.width && v1.screenY > 0 && v1.screenY < canvas.height && v3.y > 0) {
-				o.hidden = false;
-				v1.hidden2 = false;
-			}
-		}
-		canvas.mathTime += Date.now();
-
-		if (o.hidden) continue;
-
-		//################### SORTOWANIE ŚCIAN ##########################
-
-		canvas.sortingTime -= Date.now();
-		sides_arr.length = 0;
-		var side, sum;
-		
-		for (var i = 0; i < o.sides.length; i++) {
-			side = o.sides[i];
-			sum = 0;
-			for (var k = 0; k < side.vert.length; k++) {
-				sum += vectors[side.vert[k]].size;
-			}
-			sum /= side.vert.length;
-			sides_arr.push({
-				key: i,
-				dist: sum
-			});
-		}
-
-		sides_arr.sort(function(a, b) {
-			return b.dist - a.dist;
-		})
-		canvas.sortingTime += Date.now();
-
-
-		// 50% SPEED BOOST :D
-		var disp_sides_len = sides_arr.length - o.max_vis_sides;
-		var v;
-		var ret = 1;
-
-		for (var i = disp_sides_len; i < sides_arr.length; i++) {
-			canvas.mathTime -= Date.now();
-			
-			side = o.sides[sides_arr[i].key];
-			v = side.vert;
-
-			ret = 1;
-
-			for (var k = 0; k < v.length; k++) {
-				if (vectors[v[k]].hidden) {
-					ret = 1;
-					break;
-				} else if (!vectors[v[k]].hidden2) {
-					ret = 0;
-				}
-			}
-
-			canvas.mathTime += Date.now();
-			if (ret == 1) continue;
-
-			canvas.all_display_sides++;
-
-
-			canvas.renderTime -= Date.now();
-
-			ctx.beginPath();
-			ctx.fillStyle = side.color;
-
-			try {
-				ctx.moveTo(vectors[v[v.length - 1]].screenX, vectors[v[v.length - 1]].screenY);
-				for (var k = 0; k < v.length; k++) {
-					ctx.lineTo(vectors[v[k]].screenX, vectors[v[k]].screenY);
-				}
-			} catch (err) {
-				console.log(vectors, side, err);
-			}
-
-			ctx.fill();
-			ctx.stroke();
-			canvas.renderTime += Date.now();
-		}
-		delete o.dist_sq;
-	}
-	editor.check_vertex();
+	return ob_array;
 }
+
+
+function side_display_test(vectors, side) {
+	var hidden = 1;
+	var v = side.vert;
+	for (var i = 0; i < v.length; i++) {
+		if (vectors[v[i]].hidden) { // jest z tyłu
+			return 1;
+		} else if (!vectors[v[i]].hidden2) { // widać na ekranie
+			hidden = 0;
+		}
+	}
+	return hidden;
+}
+
+function side_render(side, vectors) {
+	var v = side.vert;
+	ctx.beginPath();
+	ctx.fillStyle = side.color;
+
+	ctx.moveTo(vectors[v[v.length - 1]].screenX, vectors[v[v.length - 1]].screenY);
+	for (var i = 0; i < v.length; i++) {
+		ctx.lineTo(vectors[v[i]].screenX, vectors[v[i]].screenY);
+	}
+
+	ctx.fill();
+	ctx.stroke();
+}
+
+function sides_sort(o_key, vectors) {
+	var o = ob[o_key];
+	var sides_arr = [];
+	var side, sum;
+
+	for (var i = 0; i < o.sides.length; i++) {
+		side = o.sides[i];
+		sum = 0;
+		for (var k = 0; k < side.vert.length; k++) {
+			sum += vectors[side.vert[k]].size;
+		}
+		sum /= side.vert.length;
+		sides_arr.push({
+			key: i,
+			dist: sum
+		});
+	}
+
+	sides_arr.sort(function(a, b) {
+		return b.dist - a.dist;
+	})
+
+	return sides_arr;
+}
+
+
 
 function move_player() {
 	var c = player.camera;
@@ -437,8 +435,6 @@ function move_player() {
 
 
 function draw_miniMap() {
-	canvas.renderTime -= Date.now();
-
 	ctx.beginPath();
 	ctx.stokeStyle = 'rgba(0, 0, 0, 0.5)';
 	ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
@@ -455,8 +451,6 @@ function draw_miniMap() {
 
 	ctx.fill();
 	ctx.closePath();
-
-	canvas.renderTime += Date.now();
 }
 
 function draw_info(ms) {
@@ -466,13 +460,11 @@ function draw_info(ms) {
 	if (frame_times.arr.length > 50) frame_times.sum -= frame_times.arr.shift();
 	var av_ms = frame_times.sum / frame_times.arr.length;
 
-	canvas.renderTime -= Date.now();
 	ctx.font = '15px Arial';
 	ctx.fillStyle = 'black';
 	ctx.fillText('FPS: ' + (1000 / av_ms | 0), 20, 20)
 	ctx.fillText('MS: ' + (av_ms | 0), 20, 40)
 	ctx.fillText('Rendered sides: ' + canvas.all_display_sides, 100, 20);
-	canvas.renderTime += Date.now();
 }
 
 var frame_times = {

@@ -2,6 +2,7 @@
 
 var editor = {
 	on: 0,
+	unsaved: false,
 	width: function() {
 		return $('#editor').outerWidth();
 	},
@@ -23,7 +24,7 @@ var editor = {
 
 	sos: function (id) { // show object stats
 		try {
-			delete ob[this.id].selected
+			ob[this.id].selected = 0;
 			ob[id].selected = 1;
 		} catch (err) {
 			console.log(err);
@@ -57,7 +58,7 @@ var editor = {
 		var flex_obj = $('[data-obj="pos"], [data-obj="size"], [data-obj="rot"], [data-obj="rotSp"]')
 		flex_obj.toggleClass('lista flex').off('click');
 
-		$("li[data-obj='selected'], li[data-obj='type']").hide();
+		$("[data-obj='selected'], [data-obj='type'], [data-obj='hidden']").hide();
 	},
 
 
@@ -96,13 +97,17 @@ var editor = {
 		this.apply_changes_to_obj([], $('.stats'))
 	},
 	remove: function() {
-		ob.splice(this.id, 1);
+								ob.splice(this.id, 1);
 		this.next();
 	},
-	copy: function() {
+	clone: function() {
 		ob.push(JSON.parse(JSON.stringify(ob[this.id])))
-		ob.last().rotate = Shape.prototype.rotate;
+		ob[ob.length - 1].rotate = Shape.prototype.rotate;
 		this.sos(ob.length - 1);
+	},
+	export: function() {
+		// do dodania
+
 	},
 
 	// funkcja rekurencyjna aktualizująca obiekt

@@ -18,14 +18,14 @@ var Vector3D = function(o1, o2) {
 	this.z = o1.z - o2.z;
 	this.size = Math.sqrt(Math.sq_sum(this.x, this.y, this.z));
 
-	/* this.unit = {
-		x: this.x / this.size,
-		y: this.y / this.size,
-		z: this.z / this.size,
-	} */
+	this.hidden = false;
+	this.hidden2 = false;
+
+	this.screenX = 0;
+	this.screenY = 0;
 }
 
-var wsp3D = function(x, y, z) {
+var Point = function(x, y, z) {
 	this.x = x;
 	this.y = y;
 	this.z = z;

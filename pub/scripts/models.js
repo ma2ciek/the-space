@@ -147,10 +147,3 @@ function create_ground(x, y) {
 		}
 	}
 }
-
-function house (x, y, z) {
-	if(!z) z =0;
-	ob.push(new Shape('podstawa', x, y, z-600, [1200, 800, 600]));
-	ob.push(new Shape('dach', x, y, z, [1400, 1000, 600]));
-	ob.push(new Shape('komin', x, y + 200, z + 100, [100, 100, 200]));
-}
