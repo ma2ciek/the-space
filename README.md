@@ -3,7 +3,7 @@
 
 Working example: http://the-space.herokuapp.com/
 
-Controls: 
-[w], [a], [s], [d] and arrows - move
-mouse move - rotate camera
-[Esc] - open edititor 
+Controls:   
+[w], [a], [s], [d] and arrows - move  
+mouse move - rotate camera  
+[Esc] - open edititor   
